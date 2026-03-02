@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Reference - ForgeLine Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="scope.html">Scope</a>
+    <a href="design.html">Design</a>
+    <a href="quickstart.html">Quick Start</a>
+    <a href="api_reference.html">API Reference</a>
+    <a href="how_to_deploy_without_docker.html">Deploy Without Docker</a>
+    <a href="future_features.html">Future Features</a>
+  </nav>
+
+  <h1>API Reference</h1>
+  <p>Complete reference for the ForgeLine REST API. All endpoints are prefixed with <code>/api/v1</code>. The backend runs on port <code>8000</code> by default. Interactive Swagger documentation is available at <code>/docs</code>.</p>
+
+  <div class="card">
+    <h3>Authentication</h3>
+    <p>Most endpoints require a JWT bearer token in the <code>Authorization</code> header:</p>
+    <pre><code>Authorization: Bearer &lt;your-jwt-token&gt;</code></pre>
+    <p>Obtain a token by calling the login endpoint. Tokens are signed with the <code>JWT_SECRET</code> environment variable.</p>
+  </div>
+
+  <div class="card">
+    <h3>Response Envelope</h3>
+    <p>Successful responses return the resource directly as JSON. Errors use the following format:</p>
+    <pre><code>{
+  "detail": "Description of what went wrong"
+}</code></pre>
+  </div>
+
+  <!-- ===== AUTH ===== -->
+  <h2>Authentication</h2>
+
+  <div class="card">
+    <h3><span class="badge badge-green">POST</span> /api/v1/auth/register</h3>
+    <p>Register a new user account and organization.</p>
+    <p><strong>Auth required:</strong> No</p>
+    <h3>Request Body</h3>
+    <pre><code>{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "full_name": "Jane Doe",
+  "org_name": "Acme Corp"
+}</code></pre>
+    <h3>Response <span class="badge badge-green">201 Created</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "email": "user@example.com",
+  "full_name": "Jane Doe",
+  "org_id": "uuid",
+  "created_at": "2026-01-15T10:00:00Z"
+}</code></pre>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-yellow">400</span></td><td>Validation error (missing fields, weak password)</td></tr>
+        <tr><td><span class="badge badge-yellow">409</span></td><td>Email already registered</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-green">POST</span> /api/v1/auth/login</h3>
+    <p>Authenticate and receive a JWT access token.</p>
+    <p><strong>Auth required:</strong> No</p>
+    <h3>Request Body</h3>
+    <pre><code>{
+  "email": "user@example.com",
+  "password": "securepassword"
+}</code></pre>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer",
+  "expires_in": 86400,
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "full_name": "Jane Doe",
+    "org_id": "uuid"
+  }
+}</code></pre>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-red">401</span></td><td>Invalid email or password</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/auth/me</h3>
+    <p>Get the currently authenticated user's profile.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "email": "user@example.com",
+  "full_name": "Jane Doe",
+  "org_id": "uuid",
+  "created_at": "2026-01-15T10:00:00Z",
+  "updated_at": "2026-01-15T10:00:00Z"
+}</code></pre>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-red">401</span></td><td>Missing or invalid token</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== PROJECTS ===== -->
+  <h2>Projects</h2>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/projects</h3>
+    <p>List all projects in the authenticated user's organization.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Query Parameters</h3>
+    <table>
+      <thead>
+        <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>integer</td><td>1</td><td>Page number</td></tr>
+        <tr><td><code>per_page</code></td><td>integer</td><td>20</td><td>Items per page (max 100)</td></tr>
+      </tbody>
+    </table>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "items": [
+    {
+      "id": "uuid",
+      "name": "My Project",
+      "description": "Project description",
+      "org_id": "uuid",
+      "created_by": "uuid",
+      "created_at": "2026-01-15T10:00:00Z",
+      "updated_at": "2026-01-15T10:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "per_page": 20
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-green">POST</span> /api/v1/projects</h3>
+    <p>Create a new project.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Request Body</h3>
+    <pre><code>{
+  "name": "My Project",
+  "description": "Optional project description"
+}</code></pre>
+    <h3>Response <span class="badge badge-green">201 Created</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "name": "My Project",
+  "description": "Optional project description",
+  "org_id": "uuid",
+  "created_by": "uuid",
+  "created_at": "2026-01-15T10:00:00Z",
+  "updated_at": "2026-01-15T10:00:00Z"
+}</code></pre>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-yellow">400</span></td><td>Validation error</td></tr>
+        <tr><td><span class="badge badge-red">401</span></td><td>Unauthorized</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/projects/{project_id}</h3>
+    <p>Get details for a specific project.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Path Parameters</h3>
+    <table>
+      <thead>
+        <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>project_id</code></td><td>UUID</td><td>The project ID</td></tr>
+      </tbody>
+    </table>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "name": "My Project",
+  "description": "Project description",
+  "org_id": "uuid",
+  "created_by": "uuid",
+  "created_at": "2026-01-15T10:00:00Z",
+  "updated_at": "2026-01-15T10:00:00Z",
+  "policies": [
+    {
+      "policy_id": "uuid",
+      "name": "OWASP Security",
+      "enabled": true,
+      "severity": "error"
+    }
+  ]
+}</code></pre>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-red">404</span></td><td>Project not found</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-yellow">PUT</span> /api/v1/projects/{project_id}</h3>
+    <p>Update a project's name or description.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Request Body</h3>
+    <pre><code>{
+  "name": "Updated Project Name",
+  "description": "Updated description"
+}</code></pre>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "name": "Updated Project Name",
+  "description": "Updated description",
+  "org_id": "uuid",
+  "created_by": "uuid",
+  "created_at": "2026-01-15T10:00:00Z",
+  "updated_at": "2026-01-20T14:00:00Z"
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-red">DELETE</span> /api/v1/projects/{project_id}</h3>
+    <p>Delete a project and all associated scans, findings, and policy associations.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">204 No Content</span></h3>
+    <p>Empty response body on success.</p>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-red">404</span></td><td>Project not found</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== POLICIES ===== -->
+  <h2>Policies</h2>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/policies</h3>
+    <p>List all available policy templates (both built-in and custom).</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "items": [
+    {
+      "id": "uuid",
+      "name": "OWASP Security",
+      "slug": "owasp-security",
+      "description": "Detects common security vulnerabilities aligned with OWASP Top 10",
+      "category": "security",
+      "is_builtin": true,
+      "created_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "uuid",
+      "name": "Naming Conventions",
+      "slug": "naming-conventions",
+      "description": "Enforces consistent naming patterns",
+      "category": "style",
+      "is_builtin": true,
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "total": 7
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/policies/{policy_id}</h3>
+    <p>Get details for a specific policy, including its rules configuration.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "name": "OWASP Security",
+  "slug": "owasp-security",
+  "description": "Detects common security vulnerabilities aligned with OWASP Top 10",
+  "category": "security",
+  "rules": {
+    "check_sql_injection": true,
+    "check_xss": true,
+    "check_hardcoded_secrets": true,
+    "check_command_injection": true,
+    "check_path_traversal": true,
+    "check_insecure_deserialization": true
+  },
+  "is_builtin": true,
+  "created_at": "2026-01-01T00:00:00Z"
+}</code></pre>
+  </div>
+
+  <!-- ===== PROJECT POLICIES ===== -->
+  <h2>Project Policies</h2>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/projects/{project_id}/policies</h3>
+    <p>List all policies associated with a project and their configuration.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "items": [
+    {
+      "project_id": "uuid",
+      "policy_id": "uuid",
+      "policy_name": "OWASP Security",
+      "enabled": true,
+      "severity": "error",
+      "config": {}
+    }
+  ]
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-green">POST</span> /api/v1/projects/{project_id}/policies</h3>
+    <p>Enable a policy on a project with optional configuration.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Request Body</h3>
+    <pre><code>{
+  "policy_id": "uuid",
+  "enabled": true,
+  "severity": "warning",
+  "config": {
+    "check_sql_injection": true,
+    "check_xss": true
+  }
+}</code></pre>
+    <h3>Response <span class="badge badge-green">201 Created</span></h3>
+    <pre><code>{
+  "project_id": "uuid",
+  "policy_id": "uuid",
+  "enabled": true,
+  "severity": "warning",
+  "config": {
+    "check_sql_injection": true,
+    "check_xss": true
+  }
+}</code></pre>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-yellow">400</span></td><td>Invalid policy ID or configuration</td></tr>
+        <tr><td><span class="badge badge-yellow">409</span></td><td>Policy already associated with this project</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-yellow">PUT</span> /api/v1/projects/{project_id}/policies/{policy_id}</h3>
+    <p>Update a policy's configuration on a project (enable/disable, change severity, update config).</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Request Body</h3>
+    <pre><code>{
+  "enabled": false,
+  "severity": "error",
+  "config": {}
+}</code></pre>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "project_id": "uuid",
+  "policy_id": "uuid",
+  "enabled": false,
+  "severity": "error",
+  "config": {}
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-red">DELETE</span> /api/v1/projects/{project_id}/policies/{policy_id}</h3>
+    <p>Remove a policy from a project.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">204 No Content</span></h3>
+    <p>Empty response body on success.</p>
+  </div>
+
+  <!-- ===== SCANS ===== -->
+  <h2>Scans</h2>
+
+  <div class="card">
+    <h3><span class="badge badge-green">POST</span> /api/v1/scans</h3>
+    <p>Submit code for scanning against a project's enabled policies. This is the primary endpoint used by the VS Code extension and dashboard.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Request Body</h3>
+    <pre><code>{
+  "project_id": "uuid",
+  "file_name": "src/auth/login.py",
+  "language": "python",
+  "code": "def login(username, password):\n    query = f\"SELECT * FROM users WHERE name='{username}'\"\n    ..."
+}</code></pre>
+    <h3>Response <span class="badge badge-green">201 Created</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "project_id": "uuid",
+  "user_id": "uuid",
+  "status": "completed",
+  "file_name": "src/auth/login.py",
+  "language": "python",
+  "started_at": "2026-01-15T10:30:00Z",
+  "completed_at": "2026-01-15T10:30:05Z",
+  "created_at": "2026-01-15T10:30:00Z",
+  "findings": [
+    {
+      "id": "uuid",
+      "policy_id": "uuid",
+      "policy_name": "OWASP Security",
+      "severity": "critical",
+      "message": "SQL Injection vulnerability: user input is directly interpolated into SQL query string",
+      "line_start": 2,
+      "line_end": 2,
+      "suggestion": "Use parameterized queries instead of string interpolation. Replace with: cursor.execute('SELECT * FROM users WHERE name = %s', (username,))"
+    }
+  ],
+  "findings_count": 1
+}</code></pre>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-yellow">400</span></td><td>Validation error (missing code or project_id)</td></tr>
+        <tr><td><span class="badge badge-red">404</span></td><td>Project not found</td></tr>
+        <tr><td><span class="badge badge-yellow">422</span></td><td>No policies enabled on the project</td></tr>
+        <tr><td><span class="badge badge-red">429</span></td><td>Rate limit exceeded</td></tr>
+        <tr><td><span class="badge badge-red">503</span></td><td>AI provider unavailable</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/scans</h3>
+    <p>List scans, optionally filtered by project.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Query Parameters</h3>
+    <table>
+      <thead>
+        <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>project_id</code></td><td>UUID</td><td>&mdash;</td><td>Filter by project</td></tr>
+        <tr><td><code>status</code></td><td>string</td><td>&mdash;</td><td>Filter by status (pending, processing, completed, failed)</td></tr>
+        <tr><td><code>page</code></td><td>integer</td><td>1</td><td>Page number</td></tr>
+        <tr><td><code>per_page</code></td><td>integer</td><td>20</td><td>Items per page (max 100)</td></tr>
+      </tbody>
+    </table>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "items": [
+    {
+      "id": "uuid",
+      "project_id": "uuid",
+      "user_id": "uuid",
+      "status": "completed",
+      "file_name": "src/auth/login.py",
+      "language": "python",
+      "started_at": "2026-01-15T10:30:00Z",
+      "completed_at": "2026-01-15T10:30:05Z",
+      "findings_count": 3
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "per_page": 20
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/scans/{scan_id}</h3>
+    <p>Get full details of a scan including all findings.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "project_id": "uuid",
+  "user_id": "uuid",
+  "status": "completed",
+  "file_name": "src/auth/login.py",
+  "language": "python",
+  "code_hash": "sha256...",
+  "started_at": "2026-01-15T10:30:00Z",
+  "completed_at": "2026-01-15T10:30:05Z",
+  "created_at": "2026-01-15T10:30:00Z",
+  "findings": [
+    {
+      "id": "uuid",
+      "policy_id": "uuid",
+      "policy_name": "OWASP Security",
+      "severity": "critical",
+      "message": "SQL Injection vulnerability detected",
+      "line_start": 2,
+      "line_end": 2,
+      "suggestion": "Use parameterized queries"
+    }
+  ]
+}</code></pre>
+    <h3>Error Responses</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-red">404</span></td><td>Scan not found</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== FINDINGS ===== -->
+  <h2>Findings</h2>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/findings</h3>
+    <p>List findings across all scans, with filtering options.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Query Parameters</h3>
+    <table>
+      <thead>
+        <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>project_id</code></td><td>UUID</td><td>&mdash;</td><td>Filter by project</td></tr>
+        <tr><td><code>scan_id</code></td><td>UUID</td><td>&mdash;</td><td>Filter by scan</td></tr>
+        <tr><td><code>policy_id</code></td><td>UUID</td><td>&mdash;</td><td>Filter by policy</td></tr>
+        <tr><td><code>severity</code></td><td>string</td><td>&mdash;</td><td>Filter by severity (info, warning, error, critical)</td></tr>
+        <tr><td><code>page</code></td><td>integer</td><td>1</td><td>Page number</td></tr>
+        <tr><td><code>per_page</code></td><td>integer</td><td>20</td><td>Items per page (max 100)</td></tr>
+      </tbody>
+    </table>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "items": [
+    {
+      "id": "uuid",
+      "scan_id": "uuid",
+      "policy_id": "uuid",
+      "policy_name": "OWASP Security",
+      "severity": "critical",
+      "message": "SQL Injection vulnerability detected",
+      "line_start": 2,
+      "line_end": 2,
+      "suggestion": "Use parameterized queries",
+      "created_at": "2026-01-15T10:30:05Z"
+    }
+  ],
+  "total": 156,
+  "page": 1,
+  "per_page": 20
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/findings/{finding_id}</h3>
+    <p>Get full details of a specific finding.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "scan_id": "uuid",
+  "policy_id": "uuid",
+  "policy_name": "OWASP Security",
+  "severity": "critical",
+  "message": "SQL Injection vulnerability: user input is directly interpolated into SQL query string on line 2",
+  "line_start": 2,
+  "line_end": 2,
+  "suggestion": "Use parameterized queries instead of string interpolation. Replace with: cursor.execute('SELECT * FROM users WHERE name = %s', (username,))",
+  "created_at": "2026-01-15T10:30:05Z"
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/findings/{finding_id}/similar</h3>
+    <p>Find similar findings using pgvector embedding similarity search. Useful for identifying recurring patterns across scans and projects.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Query Parameters</h3>
+    <table>
+      <thead>
+        <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>limit</code></td><td>integer</td><td>10</td><td>Maximum number of similar findings to return</td></tr>
+        <tr><td><code>threshold</code></td><td>float</td><td>0.8</td><td>Minimum cosine similarity score (0.0 to 1.0)</td></tr>
+      </tbody>
+    </table>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "items": [
+    {
+      "id": "uuid",
+      "scan_id": "uuid",
+      "severity": "critical",
+      "message": "SQL Injection vulnerability in query builder",
+      "similarity_score": 0.94
+    }
+  ]
+}</code></pre>
+  </div>
+
+  <!-- ===== ORGANIZATIONS ===== -->
+  <h2>Organizations</h2>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/organizations/current</h3>
+    <p>Get the current user's organization details.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "name": "Acme Corp",
+  "slug": "acme-corp",
+  "created_at": "2026-01-01T00:00:00Z",
+  "member_count": 5,
+  "project_count": 12
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-yellow">PUT</span> /api/v1/organizations/current</h3>
+    <p>Update the current organization's name.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Request Body</h3>
+    <pre><code>{
+  "name": "Acme Corporation"
+}</code></pre>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "id": "uuid",
+  "name": "Acme Corporation",
+  "slug": "acme-corporation",
+  "created_at": "2026-01-01T00:00:00Z"
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/organizations/current/members</h3>
+    <p>List all members of the current organization.</p>
+    <p><strong>Auth required:</strong> Yes</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "items": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "full_name": "Jane Doe",
+      "created_at": "2026-01-15T10:00:00Z"
+    }
+  ],
+  "total": 5
+}</code></pre>
+  </div>
+
+  <!-- ===== HEALTH ===== -->
+  <h2>Health &amp; Status</h2>
+
+  <div class="card">
+    <h3><span class="badge badge-blue">GET</span> /api/v1/health</h3>
+    <p>Health check endpoint. Returns the status of all dependent services.</p>
+    <p><strong>Auth required:</strong> No</p>
+    <h3>Response <span class="badge badge-green">200 OK</span></h3>
+    <pre><code>{
+  "status": "healthy",
+  "version": "0.1.0",
+  "services": {
+    "postgresql": "connected",
+    "neo4j": "connected",
+    "redis": "connected"
+  },
+  "timestamp": "2026-01-15T10:30:00Z"
+}</code></pre>
+    <h3>Response <span class="badge badge-red">503 Service Unavailable</span></h3>
+    <pre><code>{
+  "status": "unhealthy",
+  "version": "0.1.0",
+  "services": {
+    "postgresql": "connected",
+    "neo4j": "disconnected",
+    "redis": "connected"
+  },
+  "timestamp": "2026-01-15T10:30:00Z"
+}</code></pre>
+  </div>
+
+  <!-- ===== SUMMARY TABLE ===== -->
+  <h2>Endpoint Summary</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Description</th>
+          <th>Auth</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-green">POST</span></td>
+          <td><code>/api/v1/auth/register</code></td>
+          <td>Register new user</td>
+          <td>No</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">POST</span></td>
+          <td><code>/api/v1/auth/login</code></td>
+          <td>Login and get JWT token</td>
+          <td>No</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/auth/me</code></td>
+          <td>Get current user profile</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/projects</code></td>
+          <td>List projects</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">POST</span></td>
+          <td><code>/api/v1/projects</code></td>
+          <td>Create project</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/projects/{id}</code></td>
+          <td>Get project details</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">PUT</span></td>
+          <td><code>/api/v1/projects/{id}</code></td>
+          <td>Update project</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">DELETE</span></td>
+          <td><code>/api/v1/projects/{id}</code></td>
+          <td>Delete project</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/policies</code></td>
+          <td>List all policies</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/policies/{id}</code></td>
+          <td>Get policy details</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/projects/{id}/policies</code></td>
+          <td>List project policies</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">POST</span></td>
+          <td><code>/api/v1/projects/{id}/policies</code></td>
+          <td>Add policy to project</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">PUT</span></td>
+          <td><code>/api/v1/projects/{id}/policies/{pid}</code></td>
+          <td>Update project policy config</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">DELETE</span></td>
+          <td><code>/api/v1/projects/{id}/policies/{pid}</code></td>
+          <td>Remove policy from project</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">POST</span></td>
+          <td><code>/api/v1/scans</code></td>
+          <td>Submit code for scanning</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/scans</code></td>
+          <td>List scans</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/scans/{id}</code></td>
+          <td>Get scan details with findings</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/findings</code></td>
+          <td>List findings</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/findings/{id}</code></td>
+          <td>Get finding details</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/findings/{id}/similar</code></td>
+          <td>Find similar findings (vector search)</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/organizations/current</code></td>
+          <td>Get current organization</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">PUT</span></td>
+          <td><code>/api/v1/organizations/current</code></td>
+          <td>Update organization</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/organizations/current/members</code></td>
+          <td>List organization members</td>
+          <td>Yes</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">GET</span></td>
+          <td><code>/api/v1/health</code></td>
+          <td>Health check</td>
+          <td>No</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

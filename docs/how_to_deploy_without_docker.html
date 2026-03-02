@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deploy Without Docker - ForgeLine Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="scope.html">Scope</a>
+    <a href="design.html">Design</a>
+    <a href="quickstart.html">Quick Start</a>
+    <a href="api_reference.html">API Reference</a>
+    <a href="how_to_deploy_without_docker.html">Deploy Without Docker</a>
+    <a href="future_features.html">Future Features</a>
+  </nav>
+
+  <h1>Deploy Without Docker</h1>
+  <p>This guide covers manual installation and deployment of all ForgeLine components without Docker. This is useful for production environments where you want full control over each service, or for development on machines where Docker is not available.</p>
+
+  <h2>Overview</h2>
+  <div class="card">
+    <p>You will install and configure the following components:</p>
+    <ol>
+      <li><strong>PostgreSQL 15+</strong> with the pgvector extension</li>
+      <li><strong>Neo4j 5+</strong> for the knowledge graph</li>
+      <li><strong>Redis 7+</strong> for caching and the task queue</li>
+      <li><strong>Python backend</strong> (FastAPI application)</li>
+      <li><strong>React dashboard</strong> (static build served by a web server)</li>
+    </ol>
+  </div>
+
+  <h2>1. Install PostgreSQL with pgvector</h2>
+  <div class="card">
+    <h3>Ubuntu / Debian</h3>
+    <pre><code># Install PostgreSQL
+sudo apt update
+sudo apt install -y postgresql-15 postgresql-contrib-15
+
+# Install pgvector from source
+sudo apt install -y postgresql-server-dev-15 build-essential git
+cd /tmp
+git clone --branch v0.5.1 https://github.com/pgvector/pgvector.git
+cd pgvector
+make
+sudo make install
+
+# Start PostgreSQL
+sudo systemctl enable postgresql
+sudo systemctl start postgresql</code></pre>
+
+    <h3>macOS (Homebrew)</h3>
+    <pre><code>brew install postgresql@15
+brew install pgvector
+
+brew services start postgresql@15</code></pre>
+
+    <h3>Windows</h3>
+    <pre><code># Download the installer from https://www.postgresql.org/download/windows/
+# Run the installer and include pgvector from Stack Builder,
+# or build pgvector from source using Visual Studio Build Tools.</code></pre>
+
+    <h3>Create the Database and Enable pgvector</h3>
+    <pre><code># Switch to postgres user
+sudo -u postgres psql
+
+-- Create user and database
+CREATE USER forgeline WITH PASSWORD 'your-db-password';
+CREATE DATABASE forgeline OWNER forgeline;
+
+-- Connect to the database and enable pgvector
+\c forgeline
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Grant permissions
+GRANT ALL PRIVILEGES ON DATABASE forgeline TO forgeline;
+\q</code></pre>
+
+    <h3>Verify</h3>
+    <pre><code>psql -U forgeline -d forgeline -h localhost -c "SELECT extname FROM pg_extension WHERE extname = 'vector';"</code></pre>
+    <p>Expected output: one row showing <code>vector</code>.</p>
+  </div>
+
+  <h2>2. Install Neo4j</h2>
+  <div class="card">
+    <h3>Ubuntu / Debian</h3>
+    <pre><code># Add Neo4j repository
+wget -O - https://debian.neo4j.com/neotechnology.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/neo4j.gpg
+echo "deb [signed-by=/usr/share/keyrings/neo4j.gpg] https://debian.neo4j.com stable latest" | sudo tee /etc/apt/sources.list.d/neo4j.list
+sudo apt update
+
+# Install Neo4j
+sudo apt install -y neo4j
+
+# Start Neo4j
+sudo systemctl enable neo4j
+sudo systemctl start neo4j</code></pre>
+
+    <h3>macOS (Homebrew)</h3>
+    <pre><code>brew install neo4j
+brew services start neo4j</code></pre>
+
+    <h3>Windows</h3>
+    <pre><code># Download from https://neo4j.com/download-center/
+# Run the installer or extract the ZIP and run bin\neo4j console</code></pre>
+
+    <h3>Configure Neo4j</h3>
+    <p>Edit the Neo4j configuration file (typically <code>/etc/neo4j/neo4j.conf</code>):</p>
+    <pre><code># Set the initial password (or use the Neo4j Browser at http://localhost:7474)
+sudo neo4j-admin dbms set-initial-password your-neo4j-password
+
+# Ensure these settings are configured:
+# server.default_listen_address=0.0.0.0
+# server.bolt.listen_address=:7687
+# server.http.listen_address=:7474</code></pre>
+
+    <h3>Verify</h3>
+    <pre><code>cypher-shell -u neo4j -p your-neo4j-password "RETURN 1 AS test;"</code></pre>
+    <p>Access the Neo4j Browser at <a href="http://localhost:7474">http://localhost:7474</a>.</p>
+  </div>
+
+  <h2>3. Install Redis</h2>
+  <div class="card">
+    <h3>Ubuntu / Debian</h3>
+    <pre><code>sudo apt update
+sudo apt install -y redis-server
+
+# Enable and start
+sudo systemctl enable redis-server
+sudo systemctl start redis-server</code></pre>
+
+    <h3>macOS (Homebrew)</h3>
+    <pre><code>brew install redis
+brew services start redis</code></pre>
+
+    <h3>Windows</h3>
+    <pre><code># Option 1: Install via WSL2 (recommended)
+# Option 2: Use Memurai (Redis-compatible for Windows): https://www.memurai.com/
+# Option 3: Download from https://github.com/microsoftarchive/redis/releases</code></pre>
+
+    <h3>Verify</h3>
+    <pre><code>redis-cli ping</code></pre>
+    <p>Expected output: <code>PONG</code></p>
+  </div>
+
+  <h2>4. Configure and Run the Python Backend</h2>
+  <div class="card">
+    <h3>Step 1: Set up the Python environment</h3>
+    <pre><code>cd backend
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt</code></pre>
+
+    <h3>Step 2: Create the environment file</h3>
+    <p>Create a <code>.env</code> file in the <code>backend/</code> directory:</p>
+    <pre><code># PostgreSQL - use localhost since not in Docker
+DATABASE_URL=postgresql+asyncpg://forgeline:your-db-password@localhost:5432/forgeline
+
+# Neo4j
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-neo4j-password
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+
+# Auth
+JWT_SECRET=generate-a-strong-random-string-here
+
+# AI Providers
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+OPENAI_API_KEY=sk-your-key-here</code></pre>
+
+    <h3>Step 3: Run database migrations</h3>
+    <pre><code>alembic upgrade head</code></pre>
+
+    <h3>Step 4: Seed built-in policies</h3>
+    <pre><code>python -m app.scripts.seed_policies</code></pre>
+
+    <h3>Step 5: Start the backend</h3>
+    <p>For development:</p>
+    <pre><code>uvicorn app.main:app --reload --host 0.0.0.0 --port 8000</code></pre>
+    <p>For production, use Gunicorn with Uvicorn workers:</p>
+    <pre><code>gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000</code></pre>
+
+    <h3>Verify</h3>
+    <p>Open <a href="http://localhost:8000/docs">http://localhost:8000/docs</a> to see the Swagger UI.</p>
+  </div>
+
+  <h2>5. Build and Serve the Dashboard</h2>
+  <div class="card">
+    <h3>Step 1: Install dependencies and build</h3>
+    <pre><code>cd dashboard
+
+# Install dependencies
+npm install
+
+# Set the API URL for the build
+echo "VITE_API_URL=http://localhost:8000" > .env.production
+
+# Build the production bundle
+npm run build</code></pre>
+    <p>The build output will be in the <code>dist/</code> directory.</p>
+
+    <h3>Step 2: Serve with Nginx</h3>
+    <p>Install Nginx and create a site configuration:</p>
+    <pre><code>sudo apt install -y nginx</code></pre>
+    <p>Create <code>/etc/nginx/sites-available/forgeline-dashboard</code>:</p>
+    <pre><code>server {
+    listen 3000;
+    server_name _;
+
+    root /path/to/forgeline/dashboard/dist;
+    index index.html;
+
+    # SPA routing - serve index.html for all routes
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy API requests to the backend
+    location /api/ {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}</code></pre>
+    <pre><code># Enable the site
+sudo ln -s /etc/nginx/sites-available/forgeline-dashboard /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+    <h3>Alternative: Serve with Node.js</h3>
+    <pre><code># Install serve globally
+npm install -g serve
+
+# Serve the built dashboard
+serve -s dist -l 3000</code></pre>
+  </div>
+
+  <h2>6. Set Up systemd Services (Linux)</h2>
+  <div class="card">
+    <p>For production deployments on Linux, create systemd service files to manage the ForgeLine backend as a system service.</p>
+
+    <h3>Backend Service</h3>
+    <p>Create <code>/etc/systemd/system/forgeline-backend.service</code>:</p>
+    <pre><code>[Unit]
+Description=ForgeLine Backend API
+After=network.target postgresql.service redis-server.service neo4j.service
+Wants=postgresql.service redis-server.service neo4j.service
+
+[Service]
+Type=simple
+User=forgeline
+Group=forgeline
+WorkingDirectory=/opt/forgeline/backend
+Environment="PATH=/opt/forgeline/backend/venv/bin:/usr/bin"
+EnvironmentFile=/opt/forgeline/backend/.env
+ExecStart=/opt/forgeline/backend/venv/bin/gunicorn app.main:app \
+    -w 4 \
+    -k uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --access-logfile /var/log/forgeline/access.log \
+    --error-logfile /var/log/forgeline/error.log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+    <h3>Enable and Start</h3>
+    <pre><code># Create the forgeline user
+sudo useradd -r -s /bin/false forgeline
+
+# Create log directory
+sudo mkdir -p /var/log/forgeline
+sudo chown forgeline:forgeline /var/log/forgeline
+
+# Enable and start the service
+sudo systemctl daemon-reload
+sudo systemctl enable forgeline-backend
+sudo systemctl start forgeline-backend
+
+# Check status
+sudo systemctl status forgeline-backend</code></pre>
+
+    <h3>Dashboard Service (using serve)</h3>
+    <p>Create <code>/etc/systemd/system/forgeline-dashboard.service</code>:</p>
+    <pre><code>[Unit]
+Description=ForgeLine Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=forgeline
+Group=forgeline
+WorkingDirectory=/opt/forgeline/dashboard
+ExecStart=/usr/bin/npx serve -s dist -l 3000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+    <pre><code>sudo systemctl daemon-reload
+sudo systemctl enable forgeline-dashboard
+sudo systemctl start forgeline-dashboard</code></pre>
+  </div>
+
+  <h2>7. Firewall Configuration</h2>
+  <div class="card">
+    <p>If running on a server, configure firewall rules to expose only the necessary ports:</p>
+    <pre><code># Allow dashboard and API
+sudo ufw allow 3000/tcp   # Dashboard
+sudo ufw allow 8000/tcp   # Backend API (or proxy through Nginx on 80/443)
+
+# Keep databases internal only (do NOT expose to the internet)
+# PostgreSQL: 5432 - internal only
+# Neo4j: 7474, 7687 - internal only
+# Redis: 6379 - internal only
+
+sudo ufw enable</code></pre>
+    <p>For production, serve both the dashboard and API behind a reverse proxy (Nginx or Caddy) on ports 80/443 with TLS.</p>
+  </div>
+
+  <h2>Port Reference</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Port</th>
+          <th>Exposed?</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Backend API</td>
+          <td><code>8000</code></td>
+          <td>Yes (or via proxy)</td>
+          <td>FastAPI with Gunicorn + Uvicorn workers</td>
+        </tr>
+        <tr>
+          <td>Dashboard</td>
+          <td><code>3000</code></td>
+          <td>Yes (or via proxy)</td>
+          <td>Static build served by Nginx or serve</td>
+        </tr>
+        <tr>
+          <td>PostgreSQL</td>
+          <td><code>5432</code></td>
+          <td>No (internal)</td>
+          <td>Only accessible from backend</td>
+        </tr>
+        <tr>
+          <td>Neo4j HTTP</td>
+          <td><code>7474</code></td>
+          <td>No (internal)</td>
+          <td>Browser UI for administration</td>
+        </tr>
+        <tr>
+          <td>Neo4j Bolt</td>
+          <td><code>7687</code></td>
+          <td>No (internal)</td>
+          <td>Binary protocol for queries</td>
+        </tr>
+        <tr>
+          <td>Redis</td>
+          <td><code>6379</code></td>
+          <td>No (internal)</td>
+          <td>Cache and task queue</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Troubleshooting</h2>
+  <div class="card">
+    <h3>PostgreSQL: pgvector extension not found</h3>
+    <p>Make sure you installed pgvector <em>and</em> ran <code>CREATE EXTENSION vector;</code> inside the target database. Verify with:</p>
+    <pre><code>psql -U forgeline -d forgeline -c "SELECT * FROM pg_extension WHERE extname = 'vector';"</code></pre>
+
+    <h3>Neo4j: Connection refused on port 7687</h3>
+    <p>Check that Neo4j is running and the Bolt connector is enabled:</p>
+    <pre><code>sudo systemctl status neo4j
+grep "bolt" /etc/neo4j/neo4j.conf</code></pre>
+
+    <h3>Redis: Connection refused</h3>
+    <p>Ensure Redis is running and listening on the expected interface:</p>
+    <pre><code>sudo systemctl status redis-server
+redis-cli -h localhost -p 6379 ping</code></pre>
+
+    <h3>Backend: ModuleNotFoundError</h3>
+    <p>Ensure the virtual environment is activated and all dependencies are installed:</p>
+    <pre><code>source venv/bin/activate
+pip install -r requirements.txt</code></pre>
+
+    <h3>Dashboard: Blank page after build</h3>
+    <p>Check that <code>VITE_API_URL</code> was set correctly before building, and that the Nginx <code>try_files</code> directive is configured for SPA routing.</p>
+  </div>
+</body>
+</html>

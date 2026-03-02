@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ForgeLine Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="scope.html">Scope</a>
+    <a href="design.html">Design</a>
+    <a href="quickstart.html">Quick Start</a>
+    <a href="api_reference.html">API Reference</a>
+    <a href="how_to_deploy_without_docker.html">Deploy Without Docker</a>
+    <a href="future_features.html">Future Features</a>
+  </nav>
+
+  <h1>ForgeLine Documentation</h1>
+  <p>Welcome to the official documentation for <strong>ForgeLine</strong> &mdash; an AI-generated code governance platform that helps teams enforce coding standards, security policies, and architectural guidelines across their projects.</p>
+
+  <h2>What is ForgeLine?</h2>
+  <div class="card">
+    <p>ForgeLine automatically scans AI-generated and human-written code against configurable policy templates. It catches security vulnerabilities, naming convention violations, architectural drift, and more &mdash; before code reaches production.</p>
+    <p>The platform ships as a monorepo containing a <strong>FastAPI/Python backend</strong>, a <strong>React/TypeScript dashboard</strong>, and a <strong>VS Code extension</strong>, backed by PostgreSQL (with pgvector), Neo4j, and Redis.</p>
+  </div>
+
+  <h2>Documentation Index</h2>
+
+  <div class="card">
+    <h3><a href="scope.html">Project Scope</a></h3>
+    <p>What ForgeLine does, who it is for, key capabilities, and boundaries of the project &mdash; what is in scope and what is not.</p>
+  </div>
+
+  <div class="card">
+    <h3><a href="design.html">Architecture &amp; Design</a></h3>
+    <p>System components, data flow diagrams, technology stack choices, database schemas, and API design principles.</p>
+  </div>
+
+  <div class="card">
+    <h3><a href="quickstart.html">Quick Start Guide</a></h3>
+    <p>Get ForgeLine running locally in minutes. Covers prerequisites, Docker setup, local development, creating your first project, and installing the VS Code extension.</p>
+  </div>
+
+  <div class="card">
+    <h3><a href="api_reference.html">API Reference</a></h3>
+    <p>Complete reference for every REST API endpoint: methods, paths, request/response bodies, and status codes.</p>
+  </div>
+
+  <div class="card">
+    <h3><a href="how_to_deploy_without_docker.html">Deploy Without Docker</a></h3>
+    <p>Manual deployment guide for installing PostgreSQL with pgvector, Neo4j, Redis, the Python backend, and the React dashboard without Docker.</p>
+  </div>
+
+  <div class="card">
+    <h3><a href="future_features.html">Future Features (Phase 2)</a></h3>
+    <p>Roadmap for planned features including CI/CD integration, GitHub PR bot, custom LLM rules, team management, webhooks, and VS Code Marketplace publishing.</p>
+  </div>
+
+  <h2>Key Highlights</h2>
+  <ul>
+    <li><span class="badge badge-blue">7 Built-in Policies</span> OWASP Security, Naming Conventions, Architecture, Error Handling, Dependencies, Performance, Documentation</li>
+    <li><span class="badge badge-green">Real-time Scanning</span> Scan code on save directly from VS Code</li>
+    <li><span class="badge badge-yellow">Knowledge Graph</span> Neo4j-powered relationships between projects, policies, and violations</li>
+    <li><span class="badge badge-blue">AI-Powered</span> Integrates with Anthropic and OpenAI APIs for intelligent code analysis</li>
+  </ul>
+
+  <h2>Quick Links</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Service</th>
+        <th>Default Port</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Backend API</td>
+        <td><code>8000</code></td>
+        <td>FastAPI application server</td>
+      </tr>
+      <tr>
+        <td>Dashboard</td>
+        <td><code>3000</code> / <code>5173</code></td>
+        <td>React dashboard (production / dev)</td>
+      </tr>
+      <tr>
+        <td>PostgreSQL</td>
+        <td><code>5432</code></td>
+        <td>Primary database with pgvector</td>
+      </tr>
+      <tr>
+        <td>Neo4j</td>
+        <td><code>7474</code> / <code>7687</code></td>
+        <td>Knowledge graph (HTTP / Bolt)</td>
+      </tr>
+      <tr>
+        <td>Redis</td>
+        <td><code>6379</code></td>
+        <td>Cache and task queue</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

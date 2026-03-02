@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Future Features (Phase 2) - ForgeLine Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="scope.html">Scope</a>
+    <a href="design.html">Design</a>
+    <a href="quickstart.html">Quick Start</a>
+    <a href="api_reference.html">API Reference</a>
+    <a href="how_to_deploy_without_docker.html">Deploy Without Docker</a>
+    <a href="future_features.html">Future Features</a>
+  </nav>
+
+  <h1>Future Features (Phase 2 Roadmap)</h1>
+  <p>This document outlines the planned features and enhancements for ForgeLine Phase 2. These items are currently <a href="scope.html">out of scope</a> for the initial release but represent the next major iteration of the platform.</p>
+
+  <h2>CI/CD Integration</h2>
+  <div class="card">
+    <p><span class="badge badge-blue">Planned</span></p>
+    <p>Integrate ForgeLine scanning directly into continuous integration and deployment pipelines so that policy checks run automatically on every commit or pull request.</p>
+    <h3>Planned Capabilities</h3>
+    <ul>
+      <li><strong>GitHub Actions</strong> &mdash; Official action that runs ForgeLine scans as a workflow step and reports findings as check annotations</li>
+      <li><strong>GitLab CI</strong> &mdash; Template job definition for <code>.gitlab-ci.yml</code> integration</li>
+      <li><strong>Jenkins</strong> &mdash; Pipeline plugin for triggering scans from Jenkinsfiles</li>
+      <li><strong>Generic CLI</strong> &mdash; A <code>forgeline-cli</code> tool that can be used in any CI system, exiting with non-zero status when critical findings are detected</li>
+    </ul>
+    <h3>Expected Behavior</h3>
+    <ul>
+      <li>Scan changed files only (diff-based) for faster pipeline execution</li>
+      <li>Configurable failure thresholds (e.g., fail the build if any critical or error-severity findings exist)</li>
+      <li>SARIF output format for compatibility with GitHub Code Scanning and other tools</li>
+      <li>Caching of previous scan results to avoid redundant analysis</li>
+    </ul>
+  </div>
+
+  <h2>GitHub Pull Request Bot</h2>
+  <div class="card">
+    <p><span class="badge badge-blue">Planned</span></p>
+    <p>A GitHub App that automatically reviews pull requests, posting inline comments on lines that violate enabled policies.</p>
+    <h3>Planned Capabilities</h3>
+    <ul>
+      <li>Automatic scan triggered on PR open and update events</li>
+      <li>Inline review comments on specific lines with violation details and remediation suggestions</li>
+      <li>Summary comment with overall compliance score and finding counts by severity</li>
+      <li>Status check that blocks merging if critical violations are found</li>
+      <li>Configuration via <code>.forgeline.yml</code> in the repository root</li>
+    </ul>
+  </div>
+
+  <h2>Custom LLM Rules</h2>
+  <div class="card">
+    <p><span class="badge badge-yellow">Planned</span></p>
+    <p>Allow users to define custom analysis rules using natural language prompts, expanding beyond the 7 built-in policy templates.</p>
+    <h3>Planned Capabilities</h3>
+    <ul>
+      <li>Natural language rule editor in the dashboard</li>
+      <li>Rule testing sandbox where users can validate rules against sample code</li>
+      <li>Rule versioning and rollback</li>
+      <li>Ability to share custom rules across projects within an organization</li>
+      <li>Template library for common custom rules contributed by the community</li>
+    </ul>
+    <h3>Example Custom Rule</h3>
+    <pre><code>{
+  "name": "No Direct Database Queries in Controllers",
+  "prompt": "Check if this code file, which appears to be a controller or route handler, contains any direct database queries (SQL statements, ORM queries, or direct database client calls). Controllers should delegate data access to a service or repository layer.",
+  "severity": "warning",
+  "languages": ["python", "typescript", "javascript"]
+}</code></pre>
+  </div>
+
+  <h2>Team Management</h2>
+  <div class="card">
+    <p><span class="badge badge-yellow">Planned</span></p>
+    <p>Enhanced organization and team management features for larger teams adopting ForgeLine.</p>
+    <h3>Planned Capabilities</h3>
+    <ul>
+      <li><strong>Roles and permissions</strong> &mdash; Admin, Manager, Developer, and Viewer roles with granular permissions</li>
+      <li><strong>Team grouping</strong> &mdash; Organize users into teams within an organization, with per-team project access</li>
+      <li><strong>SSO / SAML</strong> &mdash; Single sign-on integration with identity providers (Okta, Azure AD, Google Workspace)</li>
+      <li><strong>Audit log</strong> &mdash; Detailed log of all user actions for compliance and security review</li>
+      <li><strong>Usage analytics</strong> &mdash; Per-user and per-team scan statistics, compliance trends, and adoption metrics</li>
+    </ul>
+  </div>
+
+  <h2>Webhooks</h2>
+  <div class="card">
+    <p><span class="badge badge-green">Planned</span></p>
+    <p>Outbound webhook support for integrating ForgeLine events with external systems.</p>
+    <h3>Planned Events</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Trigger</th>
+          <th>Use Case</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>scan.completed</code></td>
+          <td>A scan finishes processing</td>
+          <td>Notify Slack, update JIRA ticket</td>
+        </tr>
+        <tr>
+          <td><code>scan.critical_finding</code></td>
+          <td>A critical-severity finding is detected</td>
+          <td>Page on-call engineer via PagerDuty</td>
+        </tr>
+        <tr>
+          <td><code>project.policy_changed</code></td>
+          <td>A policy is enabled, disabled, or reconfigured</td>
+          <td>Log policy changes for audit</td>
+        </tr>
+        <tr>
+          <td><code>project.created</code></td>
+          <td>A new project is created</td>
+          <td>Auto-provision default policies</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3>Webhook Payload Format</h3>
+    <pre><code>{
+  "event": "scan.completed",
+  "timestamp": "2026-01-15T10:30:00Z",
+  "data": {
+    "scan_id": "uuid",
+    "project_id": "uuid",
+    "status": "completed",
+    "findings_count": 5,
+    "critical_count": 1,
+    "error_count": 2,
+    "warning_count": 2
+  }
+}</code></pre>
+  </div>
+
+  <h2>VS Code Marketplace Publishing</h2>
+  <div class="card">
+    <p><span class="badge badge-green">Planned</span></p>
+    <p>Publish the ForgeLine VS Code extension to the Visual Studio Marketplace for easy discovery and one-click installation.</p>
+    <h3>Planned Steps</h3>
+    <ul>
+      <li>Register a verified publisher account on the VS Code Marketplace</li>
+      <li>Set up automated CI/CD pipeline to build and publish new versions</li>
+      <li>Add extension icon, screenshots, and detailed README</li>
+      <li>Implement automatic update notifications within the extension</li>
+      <li>Support Open VSX Registry for VS Codium and other open-source editor users</li>
+    </ul>
+  </div>
+
+  <h2>Additional Phase 2 Items</h2>
+  <div class="card">
+    <h3>Multi-Language Expansion</h3>
+    <p>Expand language-specific analysis support beyond the initial set, with dedicated rule sets for Go, Rust, Java, C#, Ruby, and PHP.</p>
+
+    <h3>Self-Hosted LLM Support</h3>
+    <p>Allow organizations to run their own LLM inference (e.g., via Ollama, vLLM, or HuggingFace TGI) for code analysis, eliminating the need to send code to third-party APIs.</p>
+
+    <h3>Dashboard Enhancements</h3>
+    <ul>
+      <li>Compliance trend charts and historical reporting</li>
+      <li>Diff view showing code before and after applying suggestions</li>
+      <li>Export scan reports to PDF and CSV</li>
+      <li>Dark/light theme toggle (currently dark only)</li>
+    </ul>
+
+    <h3>Policy Marketplace</h3>
+    <p>A community-driven marketplace where teams can share and discover custom policy templates, similar to ESLint shared configs or Prettier plugins.</p>
+  </div>
+
+  <h2>Timeline</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Priority</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>CI/CD Integration</td>
+          <td><span class="badge badge-red">High</span></td>
+          <td>Design phase</td>
+        </tr>
+        <tr>
+          <td>GitHub PR Bot</td>
+          <td><span class="badge badge-red">High</span></td>
+          <td>Design phase</td>
+        </tr>
+        <tr>
+          <td>Custom LLM Rules</td>
+          <td><span class="badge badge-yellow">Medium</span></td>
+          <td>Requirements gathering</td>
+        </tr>
+        <tr>
+          <td>Team Management</td>
+          <td><span class="badge badge-yellow">Medium</span></td>
+          <td>Requirements gathering</td>
+        </tr>
+        <tr>
+          <td>Webhooks</td>
+          <td><span class="badge badge-yellow">Medium</span></td>
+          <td>Specification draft</td>
+        </tr>
+        <tr>
+          <td>VS Code Marketplace</td>
+          <td><span class="badge badge-green">Low</span></td>
+          <td>Pending Phase 1 stability</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

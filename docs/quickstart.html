@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Start Guide - ForgeLine Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="scope.html">Scope</a>
+    <a href="design.html">Design</a>
+    <a href="quickstart.html">Quick Start</a>
+    <a href="api_reference.html">API Reference</a>
+    <a href="how_to_deploy_without_docker.html">Deploy Without Docker</a>
+    <a href="future_features.html">Future Features</a>
+  </nav>
+
+  <h1>Quick Start Guide</h1>
+  <p>Get ForgeLine running locally in minutes. This guide covers Docker setup (recommended), local development setup, creating your first project, and installing the VS Code extension.</p>
+
+  <h2>Prerequisites</h2>
+  <div class="card">
+    <h3>Required</h3>
+    <ul>
+      <li><strong>Docker</strong> 20.10+ and <strong>Docker Compose</strong> v2+</li>
+      <li><strong>Git</strong> for cloning the repository</li>
+    </ul>
+    <h3>For Local Development (without Docker)</h3>
+    <ul>
+      <li><strong>Python</strong> 3.11+</li>
+      <li><strong>Node.js</strong> 18+ and <strong>npm</strong> 9+</li>
+      <li><strong>PostgreSQL</strong> 15+ with the <strong>pgvector</strong> extension</li>
+      <li><strong>Neo4j</strong> 5+</li>
+      <li><strong>Redis</strong> 7+</li>
+    </ul>
+    <h3>API Keys</h3>
+    <ul>
+      <li><strong>Anthropic API Key</strong> &mdash; for Claude-powered code analysis</li>
+      <li><strong>OpenAI API Key</strong> (optional) &mdash; for additional AI analysis capabilities</li>
+    </ul>
+  </div>
+
+  <h2>1. Clone the Repository</h2>
+  <div class="card">
+    <pre><code>git clone https://github.com/your-org/forgeline.git
+cd forgeline</code></pre>
+  </div>
+
+  <h2>2. Docker Setup (Recommended)</h2>
+  <div class="card">
+    <p>Docker Compose is the fastest way to get all services running.</p>
+
+    <h3>Step 1: Create the environment file</h3>
+    <p>Copy the example environment file and fill in your values:</p>
+    <pre><code>cp .env.example .env</code></pre>
+    <p>Edit <code>.env</code> with your configuration:</p>
+    <pre><code># Database
+DATABASE_URL=postgresql+asyncpg://forgeline:forgeline@postgres:5432/forgeline
+
+# Neo4j
+NEO4J_URI=bolt://neo4j:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-neo4j-password
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# Auth
+JWT_SECRET=your-secret-key-change-in-production
+
+# AI Providers
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+OPENAI_API_KEY=sk-your-key-here</code></pre>
+
+    <h3>Step 2: Start all services</h3>
+    <pre><code>docker compose up -d</code></pre>
+    <p>This starts PostgreSQL (with pgvector), Neo4j, Redis, the backend API, and the dashboard.</p>
+
+    <h3>Step 3: Run database migrations</h3>
+    <pre><code>docker compose exec backend alembic upgrade head</code></pre>
+
+    <h3>Step 4: Seed built-in policies</h3>
+    <pre><code>docker compose exec backend python -m app.scripts.seed_policies</code></pre>
+
+    <h3>Step 5: Verify everything is running</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>URL</th>
+          <th>Expected Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Backend API</td>
+          <td><a href="http://localhost:8000/docs">http://localhost:8000/docs</a></td>
+          <td>Swagger UI</td>
+        </tr>
+        <tr>
+          <td>Dashboard</td>
+          <td><a href="http://localhost:3000">http://localhost:3000</a></td>
+          <td>Login page</td>
+        </tr>
+        <tr>
+          <td>Neo4j Browser</td>
+          <td><a href="http://localhost:7474">http://localhost:7474</a></td>
+          <td>Neo4j web interface</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>3. Local Development Setup</h2>
+  <div class="card">
+    <p>For active development, you may want to run services individually. See <a href="how_to_deploy_without_docker.html">Deploy Without Docker</a> for full manual installation instructions.</p>
+
+    <h3>Backend</h3>
+    <pre><code># Create and activate virtual environment
+cd backend
+python -m venv venv
+source venv/bin/activate   # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations
+alembic upgrade head
+
+# Seed policies
+python -m app.scripts.seed_policies
+
+# Start the development server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000</code></pre>
+
+    <h3>Dashboard</h3>
+    <pre><code># Install dependencies
+cd dashboard
+npm install
+
+# Start the development server (Vite)
+npm run dev</code></pre>
+    <p>The dashboard dev server runs on <code>http://localhost:5173</code> with hot module replacement enabled.</p>
+
+    <h3>VS Code Extension (Development)</h3>
+    <pre><code># Install dependencies
+cd vscode-extension
+npm install
+
+# Compile
+npm run compile
+
+# Press F5 in VS Code to launch the Extension Development Host</code></pre>
+  </div>
+
+  <h2>4. Create Your First Project</h2>
+  <div class="card">
+    <h3>Step 1: Register an account</h3>
+    <pre><code>curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "you@example.com",
+    "password": "your-password",
+    "full_name": "Your Name",
+    "org_name": "My Organization"
+  }'</code></pre>
+
+    <h3>Step 2: Log in to get a JWT token</h3>
+    <pre><code>curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "you@example.com",
+    "password": "your-password"
+  }'</code></pre>
+    <p>Save the <code>access_token</code> from the response.</p>
+
+    <h3>Step 3: Create a project</h3>
+    <pre><code>curl -X POST http://localhost:8000/api/v1/projects \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "name": "My First Project",
+    "description": "Testing ForgeLine code governance"
+  }'</code></pre>
+
+    <h3>Step 4: Enable policies on the project</h3>
+    <pre><code>curl -X POST http://localhost:8000/api/v1/projects/PROJECT_ID/policies \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "policy_id": "POLICY_UUID",
+    "enabled": true,
+    "severity": "warning"
+  }'</code></pre>
+
+    <h3>Step 5: Run your first scan</h3>
+    <pre><code>curl -X POST http://localhost:8000/api/v1/scans \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "project_id": "PROJECT_ID",
+    "file_name": "example.py",
+    "language": "python",
+    "code": "import os\npassword = \"hardcoded_secret\"\nos.system(f\"rm -rf {user_input}\")"
+  }'</code></pre>
+    <p>The response will include findings from enabled policies, such as OWASP Security flagging the hardcoded password and command injection.</p>
+  </div>
+
+  <h2>5. Install the VS Code Extension</h2>
+  <div class="card">
+    <h3>From VSIX (local install)</h3>
+    <pre><code># Build the extension package
+cd vscode-extension
+npm run package
+
+# Install in VS Code
+code --install-extension forgeline-0.1.0.vsix</code></pre>
+
+    <h3>Configure the extension</h3>
+    <p>Open VS Code settings (<code>Ctrl+,</code> / <code>Cmd+,</code>) and search for "ForgeLine":</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Setting</th>
+          <th>Value</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>forgeline.serverUrl</code></td>
+          <td><code>http://localhost:8000</code></td>
+          <td>Backend API URL</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.apiKey</code></td>
+          <td>Your JWT token</td>
+          <td>Authentication token</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.projectId</code></td>
+          <td>Your project UUID</td>
+          <td>Target project for scans</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.autoScan</code></td>
+          <td><code>true</code></td>
+          <td>Enable automatic scanning</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.scanOnSave</code></td>
+          <td><code>true</code></td>
+          <td>Scan when files are saved</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.severityThreshold</code></td>
+          <td><code>warning</code></td>
+          <td>Minimum severity to show</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Or add to your <code>settings.json</code>:</p>
+    <pre><code>{
+  "forgeline.serverUrl": "http://localhost:8000",
+  "forgeline.apiKey": "your-jwt-token",
+  "forgeline.projectId": "your-project-id",
+  "forgeline.autoScan": true,
+  "forgeline.scanOnSave": true,
+  "forgeline.severityThreshold": "warning"
+}</code></pre>
+
+    <h3>Verify the extension</h3>
+    <ol>
+      <li>Open a code file in your project</li>
+      <li>Save the file (if scan-on-save is enabled) or run <strong>ForgeLine: Scan Current File</strong> from the command palette (<code>Ctrl+Shift+P</code>)</li>
+      <li>Check the Problems panel for findings</li>
+    </ol>
+  </div>
+
+  <h2>Next Steps</h2>
+  <div class="card">
+    <ul>
+      <li>Explore the <a href="api_reference.html">API Reference</a> for all available endpoints</li>
+      <li>Read the <a href="design.html">Architecture &amp; Design</a> document to understand the system</li>
+      <li>Check the <a href="future_features.html">Future Features</a> roadmap for what is coming next</li>
+    </ul>
+  </div>
+</body>
+</html>

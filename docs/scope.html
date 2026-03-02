@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Scope - ForgeLine Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="scope.html">Scope</a>
+    <a href="design.html">Design</a>
+    <a href="quickstart.html">Quick Start</a>
+    <a href="api_reference.html">API Reference</a>
+    <a href="how_to_deploy_without_docker.html">Deploy Without Docker</a>
+    <a href="future_features.html">Future Features</a>
+  </nav>
+
+  <h1>Project Scope</h1>
+  <p>This document defines the boundaries, purpose, and capabilities of the ForgeLine platform.</p>
+
+  <h2>What ForgeLine Does</h2>
+  <div class="card">
+    <p>ForgeLine is an <strong>AI-generated code governance platform</strong> that automatically analyzes source code against configurable policy templates. It identifies security vulnerabilities, naming convention violations, architectural drift, error handling gaps, dependency risks, performance issues, and documentation shortcomings.</p>
+    <p>The platform provides a centralized dashboard for teams to manage projects, configure policies, review scan results, and track compliance trends over time. A companion VS Code extension enables real-time scanning directly within the developer's editor.</p>
+  </div>
+
+  <h2>Target Audience</h2>
+  <ul>
+    <li><strong>Engineering teams</strong> that use AI code generation tools (Copilot, Claude, ChatGPT) and need governance over the generated output</li>
+    <li><strong>Tech leads and architects</strong> who want to enforce coding standards and architectural patterns across projects</li>
+    <li><strong>Security teams</strong> that need to ensure OWASP compliance and catch vulnerabilities early</li>
+    <li><strong>Organizations</strong> adopting AI-assisted development that require audit trails and policy enforcement</li>
+  </ul>
+
+  <h2>Key Capabilities</h2>
+
+  <h3>Policy Management</h3>
+  <div class="card">
+    <p>ForgeLine ships with <strong>7 built-in policy templates</strong>:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Policy</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-red">OWASP Security</span></td>
+          <td>Detects common security vulnerabilities aligned with the OWASP Top 10</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">Naming Conventions</span></td>
+          <td>Enforces consistent naming patterns for variables, functions, classes, and files</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">Architecture</span></td>
+          <td>Validates adherence to defined architectural layers and dependency directions</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">Error Handling</span></td>
+          <td>Checks for proper error handling, logging, and graceful degradation</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">Dependencies</span></td>
+          <td>Audits third-party dependencies for known vulnerabilities and license issues</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">Performance</span></td>
+          <td>Identifies common performance anti-patterns and optimization opportunities</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">Documentation</span></td>
+          <td>Ensures code includes adequate docstrings, comments, and API documentation</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Policies can be enabled or disabled per project and configured with custom severity thresholds.</p>
+  </div>
+
+  <h3>Code Scanning</h3>
+  <div class="card">
+    <ul>
+      <li>Submit code snippets or full files for analysis via API or VS Code extension</li>
+      <li>AI-powered analysis using Anthropic (Claude) and OpenAI models</li>
+      <li>Results include severity levels, line-specific findings, and remediation suggestions</li>
+      <li>Scan history is preserved for audit and trend analysis</li>
+    </ul>
+  </div>
+
+  <h3>Knowledge Graph</h3>
+  <div class="card">
+    <ul>
+      <li>Neo4j-backed graph of relationships between projects, policies, scans, and violations</li>
+      <li>Enables cross-project pattern detection and organizational compliance views</li>
+      <li>Supports vector similarity search via pgvector for finding related code issues</li>
+    </ul>
+  </div>
+
+  <h3>User &amp; Organization Management</h3>
+  <div class="card">
+    <ul>
+      <li>JWT-based authentication</li>
+      <li>User and organization model with role-based access</li>
+      <li>Per-organization project and policy management</li>
+    </ul>
+  </div>
+
+  <h3>Developer Experience</h3>
+  <div class="card">
+    <ul>
+      <li>VS Code extension with scan-on-save capability</li>
+      <li>React-based dashboard with project overview, scan results, and policy configuration</li>
+      <li>RESTful API for integration with existing toolchains</li>
+    </ul>
+  </div>
+
+  <h2>In Scope</h2>
+  <div class="card">
+    <ul>
+      <li>Backend API server (FastAPI/Python) with all CRUD and scanning endpoints</li>
+      <li>React/TypeScript/Tailwind dashboard for project and policy management</li>
+      <li>VS Code extension for in-editor scanning</li>
+      <li>PostgreSQL with pgvector for relational data and vector embeddings</li>
+      <li>Neo4j for knowledge graph storage and traversal</li>
+      <li>Redis for caching and background task queuing</li>
+      <li>Docker Compose setup for local development and deployment</li>
+      <li>JWT-based authentication and authorization</li>
+      <li>7 built-in policy templates with configurable severity levels</li>
+      <li>AI-powered code analysis via Anthropic and OpenAI APIs</li>
+      <li>Scan history, result storage, and basic reporting</li>
+    </ul>
+  </div>
+
+  <h2>Out of Scope (Phase 1)</h2>
+  <div class="card">
+    <p>The following items are <strong>not</strong> included in the current release but are planned for <a href="future_features.html">Phase 2</a>:</p>
+    <ul>
+      <li>CI/CD pipeline integration (GitHub Actions, GitLab CI, Jenkins)</li>
+      <li>GitHub Pull Request bot for automated review comments</li>
+      <li>Custom LLM rule authoring by end users</li>
+      <li>Advanced team management (roles, permissions, SSO)</li>
+      <li>Webhook support for external notifications</li>
+      <li>VS Code Marketplace publishing</li>
+      <li>Multi-language support beyond the initially supported languages</li>
+      <li>Self-hosted LLM inference (currently depends on cloud APIs)</li>
+      <li>Real-time collaborative editing of policies</li>
+      <li>Mobile or tablet dashboard views</li>
+    </ul>
+  </div>
+</body>
+</html>

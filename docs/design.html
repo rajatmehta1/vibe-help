@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture &amp; Design - ForgeLine Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="scope.html">Scope</a>
+    <a href="design.html">Design</a>
+    <a href="quickstart.html">Quick Start</a>
+    <a href="api_reference.html">API Reference</a>
+    <a href="how_to_deploy_without_docker.html">Deploy Without Docker</a>
+    <a href="future_features.html">Future Features</a>
+  </nav>
+
+  <h1>Architecture &amp; Design</h1>
+  <p>This document describes ForgeLine's system architecture, component design, data flow, technology choices, and database schemas.</p>
+
+  <h2>High-Level Architecture</h2>
+  <div class="card">
+    <pre class="diagram">
++---------------------+       +---------------------+       +---------------------+
+|                     |       |                     |       |                     |
+|   VS Code Extension |------&gt;|   FastAPI Backend    |&lt;------| React Dashboard     |
+|   (TypeScript)      |  API  |   (Python)          |  API  | (TypeScript/Tailwind)|
+|   Port: N/A         |       |   Port: 8000        |       | Port: 3000 / 5173   |
+|                     |       |                     |       |                     |
++---------------------+       +---------+-----------+       +---------------------+
+                                        |
+                        +---------------+---------------+
+                        |               |               |
+                  +-----v-----+   +-----v-----+   +----v------+
+                  |           |   |           |   |           |
+                  | PostgreSQL|   |   Neo4j   |   |   Redis   |
+                  | + pgvector|   | Knowledge |   |   Cache   |
+                  | Port: 5432|   | Graph     |   |   Queue   |
+                  |           |   | 7474/7687 |   | Port: 6379|
+                  +-----------+   +-----------+   +-----------+
+    </pre>
+  </div>
+
+  <h2>System Components</h2>
+
+  <h3>Backend (FastAPI / Python)</h3>
+  <div class="card">
+    <p>The backend is the central hub of ForgeLine. It exposes a RESTful API consumed by both the dashboard and the VS Code extension.</p>
+    <ul>
+      <li><strong>Framework:</strong> FastAPI with async support</li>
+      <li><strong>Authentication:</strong> JWT token-based auth with user/organization model</li>
+      <li><strong>AI Integration:</strong> Anthropic (Claude) and OpenAI APIs for code analysis</li>
+      <li><strong>ORM:</strong> SQLAlchemy with async session management</li>
+      <li><strong>Task Queue:</strong> Redis-backed background task processing for long-running scans</li>
+      <li><strong>Port:</strong> <code>8000</code></li>
+    </ul>
+    <p>Key modules:</p>
+    <ul>
+      <li><code>app/api/</code> &mdash; Route handlers organized by resource (auth, projects, policies, scans)</li>
+      <li><code>app/models/</code> &mdash; SQLAlchemy ORM models</li>
+      <li><code>app/services/</code> &mdash; Business logic layer (scanning engine, policy evaluation, AI clients)</li>
+      <li><code>app/core/</code> &mdash; Configuration, security utilities, database connections</li>
+      <li><code>app/schemas/</code> &mdash; Pydantic request/response schemas</li>
+    </ul>
+  </div>
+
+  <h3>Dashboard (React / TypeScript / Tailwind)</h3>
+  <div class="card">
+    <p>A single-page application providing a visual interface for managing projects, configuring policies, viewing scan results, and monitoring compliance.</p>
+    <ul>
+      <li><strong>Framework:</strong> React 18+ with TypeScript</li>
+      <li><strong>Styling:</strong> Tailwind CSS</li>
+      <li><strong>Build Tool:</strong> Vite</li>
+      <li><strong>Port:</strong> <code>3000</code> (production) / <code>5173</code> (Vite dev server)</li>
+    </ul>
+    <p>Key pages:</p>
+    <ul>
+      <li>Login / Registration</li>
+      <li>Project listing and detail views</li>
+      <li>Policy configuration per project</li>
+      <li>Scan results with severity filtering and line-level findings</li>
+      <li>Organization settings</li>
+    </ul>
+  </div>
+
+  <h3>VS Code Extension (TypeScript)</h3>
+  <div class="card">
+    <p>A VS Code extension that connects to the ForgeLine backend, enabling developers to scan code directly from their editor.</p>
+    <ul>
+      <li><strong>Language:</strong> TypeScript</li>
+      <li><strong>Activation:</strong> On workspace open or manual trigger</li>
+      <li><strong>Features:</strong> Scan on save, inline diagnostics, severity threshold filtering</li>
+    </ul>
+    <p>Extension settings:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Setting</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>forgeline.serverUrl</code></td>
+          <td>string</td>
+          <td>URL of the ForgeLine backend API</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.apiKey</code></td>
+          <td>string</td>
+          <td>API key for authentication</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.projectId</code></td>
+          <td>string</td>
+          <td>ID of the project to scan against</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.autoScan</code></td>
+          <td>boolean</td>
+          <td>Enable automatic scanning</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.scanOnSave</code></td>
+          <td>boolean</td>
+          <td>Trigger a scan every time a file is saved</td>
+        </tr>
+        <tr>
+          <td><code>forgeline.severityThreshold</code></td>
+          <td>string</td>
+          <td>Minimum severity level to display (info, warning, error, critical)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Data Flow</h2>
+  <div class="card">
+    <h3>Code Scan Flow</h3>
+    <pre class="diagram">
+Developer                VS Code / Dashboard            Backend                  AI Provider
+    |                           |                          |                          |
+    |--- saves file ----------&gt;|                          |                          |
+    |                           |--- POST /scans ---------&gt;|                          |
+    |                           |                          |--- fetch policies ------&gt;|
+    |                           |                          |    from PostgreSQL       |
+    |                           |                          |                          |
+    |                           |                          |--- send code + rules ---&gt;|
+    |                           |                          |    (Anthropic / OpenAI)  |
+    |                           |                          |                          |
+    |                           |                          |&lt;-- analysis results -----|
+    |                           |                          |                          |
+    |                           |                          |--- store in PostgreSQL   |
+    |                           |                          |--- update Neo4j graph    |
+    |                           |                          |--- cache in Redis        |
+    |                           |                          |                          |
+    |                           |&lt;-- scan results ---------|                          |
+    |&lt;-- inline diagnostics ----|                          |                          |
+    </pre>
+  </div>
+
+  <h2>Technology Stack</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Layer</th>
+        <th>Technology</th>
+        <th>Rationale</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Backend API</td>
+        <td>FastAPI (Python 3.11+)</td>
+        <td>Async support, automatic OpenAPI docs, Pydantic validation, strong AI/ML ecosystem</td>
+      </tr>
+      <tr>
+        <td>Frontend</td>
+        <td>React 18 + TypeScript + Tailwind</td>
+        <td>Component-based UI, type safety, rapid styling with utility classes</td>
+      </tr>
+      <tr>
+        <td>Extension</td>
+        <td>VS Code Extension API (TypeScript)</td>
+        <td>Native editor integration, large developer user base</td>
+      </tr>
+      <tr>
+        <td>Primary DB</td>
+        <td>PostgreSQL 15+ with pgvector</td>
+        <td>Robust relational storage plus vector similarity search for code embeddings</td>
+      </tr>
+      <tr>
+        <td>Graph DB</td>
+        <td>Neo4j 5+</td>
+        <td>Natural fit for modeling relationships between projects, policies, violations</td>
+      </tr>
+      <tr>
+        <td>Cache / Queue</td>
+        <td>Redis 7+</td>
+        <td>Fast caching, pub/sub for real-time updates, lightweight task queue</td>
+      </tr>
+      <tr>
+        <td>AI Providers</td>
+        <td>Anthropic (Claude), OpenAI</td>
+        <td>State-of-the-art code analysis capabilities</td>
+      </tr>
+      <tr>
+        <td>Containerization</td>
+        <td>Docker + Docker Compose</td>
+        <td>Reproducible development and deployment environments</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Database Schemas</h2>
+
+  <h3>PostgreSQL Schema</h3>
+  <div class="card">
+    <pre><code>-- Users
+CREATE TABLE users (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email         VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name     VARCHAR(255),
+    org_id        UUID REFERENCES organizations(id),
+    created_at    TIMESTAMPTZ DEFAULT now(),
+    updated_at    TIMESTAMPTZ DEFAULT now()
+);
+
+-- Organizations
+CREATE TABLE organizations (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        VARCHAR(255) NOT NULL,
+    slug        VARCHAR(255) UNIQUE NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Projects
+CREATE TABLE projects (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        VARCHAR(255) NOT NULL,
+    description TEXT,
+    org_id      UUID REFERENCES organizations(id) NOT NULL,
+    created_by  UUID REFERENCES users(id),
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Policies
+CREATE TABLE policies (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        VARCHAR(255) NOT NULL,
+    slug        VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    category    VARCHAR(100) NOT NULL,
+    rules       JSONB NOT NULL DEFAULT '{}',
+    is_builtin  BOOLEAN DEFAULT false,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Project-Policy association
+CREATE TABLE project_policies (
+    project_id  UUID REFERENCES projects(id) ON DELETE CASCADE,
+    policy_id   UUID REFERENCES policies(id) ON DELETE CASCADE,
+    enabled     BOOLEAN DEFAULT true,
+    severity    VARCHAR(20) DEFAULT 'warning',
+    config      JSONB DEFAULT '{}',
+    PRIMARY KEY (project_id, policy_id)
+);
+
+-- Scans
+CREATE TABLE scans (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id  UUID REFERENCES projects(id) NOT NULL,
+    user_id     UUID REFERENCES users(id),
+    status      VARCHAR(20) DEFAULT 'pending',
+    file_name   VARCHAR(500),
+    language    VARCHAR(50),
+    code_hash   VARCHAR(64),
+    started_at  TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Scan Results / Findings
+CREATE TABLE findings (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scan_id     UUID REFERENCES scans(id) ON DELETE CASCADE,
+    policy_id   UUID REFERENCES policies(id),
+    severity    VARCHAR(20) NOT NULL,
+    message     TEXT NOT NULL,
+    line_start  INT,
+    line_end    INT,
+    suggestion  TEXT,
+    embedding   vector(1536),
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Index for vector similarity search
+CREATE INDEX ON findings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);</code></pre>
+  </div>
+
+  <h3>Neo4j Graph Model</h3>
+  <div class="card">
+    <pre class="diagram">
+    (Organization)---[:HAS_PROJECT]---&gt;(Project)
+         |                                 |
+    [:HAS_MEMBER]                   [:HAS_POLICY]
+         |                                 |
+       (User)                          (Policy)
+         |                                 |
+    [:INITIATED]                   [:VIOLATED_BY]
+         |                                 |
+       (Scan)----[:PRODUCED]--------&gt;(Finding)
+    </pre>
+    <p>Node types: <code>Organization</code>, <code>User</code>, <code>Project</code>, <code>Policy</code>, <code>Scan</code>, <code>Finding</code></p>
+    <p>Relationship types: <code>HAS_PROJECT</code>, <code>HAS_MEMBER</code>, <code>HAS_POLICY</code>, <code>INITIATED</code>, <code>PRODUCED</code>, <code>VIOLATED_BY</code>, <code>SIMILAR_TO</code></p>
+  </div>
+
+  <h3>Redis Key Patterns</h3>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Key Pattern</th>
+          <th>Type</th>
+          <th>Purpose</th>
+          <th>TTL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>session:{user_id}</code></td>
+          <td>Hash</td>
+          <td>Active user session data</td>
+          <td>24h</td>
+        </tr>
+        <tr>
+          <td><code>scan:queue</code></td>
+          <td>List</td>
+          <td>Pending scan job queue</td>
+          <td>None</td>
+        </tr>
+        <tr>
+          <td><code>scan:status:{scan_id}</code></td>
+          <td>String</td>
+          <td>Current status of a running scan</td>
+          <td>1h</td>
+        </tr>
+        <tr>
+          <td><code>project:policies:{project_id}</code></td>
+          <td>Hash</td>
+          <td>Cached policy configuration for a project</td>
+          <td>15m</td>
+        </tr>
+        <tr>
+          <td><code>rate_limit:{user_id}</code></td>
+          <td>String</td>
+          <td>API rate limiting counter</td>
+          <td>1m</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>API Design Principles</h2>
+  <div class="card">
+    <ul>
+      <li><strong>RESTful:</strong> Resources are nouns, HTTP methods indicate actions (GET, POST, PUT, DELETE)</li>
+      <li><strong>Versioned:</strong> All endpoints are prefixed with <code>/api/v1/</code></li>
+      <li><strong>Consistent responses:</strong> All endpoints return JSON with a predictable envelope structure</li>
+      <li><strong>Pagination:</strong> List endpoints support <code>?page=</code> and <code>?per_page=</code> query parameters</li>
+      <li><strong>Error format:</strong> Errors return <code>{"detail": "message"}</code> with appropriate HTTP status codes</li>
+      <li><strong>Authentication:</strong> Bearer token in the <code>Authorization</code> header for protected endpoints</li>
+      <li><strong>OpenAPI:</strong> Auto-generated Swagger documentation available at <code>/docs</code></li>
+    </ul>
+    <p>See the <a href="api_reference.html">API Reference</a> for full endpoint documentation.</p>
+  </div>
+
+  <h2>Environment Variables</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Variable</th>
+          <th>Description</th>
+          <th>Example</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>DATABASE_URL</code></td>
+          <td>PostgreSQL connection string</td>
+          <td><code>postgresql+asyncpg://user:pass@localhost:5432/forgeline</code></td>
+        </tr>
+        <tr>
+          <td><code>NEO4J_URI</code></td>
+          <td>Neo4j Bolt connection URI</td>
+          <td><code>bolt://localhost:7687</code></td>
+        </tr>
+        <tr>
+          <td><code>NEO4J_USER</code></td>
+          <td>Neo4j username</td>
+          <td><code>neo4j</code></td>
+        </tr>
+        <tr>
+          <td><code>NEO4J_PASSWORD</code></td>
+          <td>Neo4j password</td>
+          <td><code>your-neo4j-password</code></td>
+        </tr>
+        <tr>
+          <td><code>REDIS_URL</code></td>
+          <td>Redis connection URL</td>
+          <td><code>redis://localhost:6379/0</code></td>
+        </tr>
+        <tr>
+          <td><code>JWT_SECRET</code></td>
+          <td>Secret key for signing JWT tokens</td>
+          <td><code>your-secret-key-here</code></td>
+        </tr>
+        <tr>
+          <td><code>ANTHROPIC_API_KEY</code></td>
+          <td>API key for Anthropic (Claude)</td>
+          <td><code>sk-ant-...</code></td>
+        </tr>
+        <tr>
+          <td><code>OPENAI_API_KEY</code></td>
+          <td>API key for OpenAI</td>
+          <td><code>sk-...</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
