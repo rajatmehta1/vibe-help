@@ -1,0 +1,21 @@
+
+db = forgeline
+
+user = forgeline
+
+pwd = forgeline
+
+localhost: 5432
+
+pgvector enable and postgres 18
+
+---------------------------------------------
+
+neo4j / neo4j-admin
+
+----
+
+redis memurai-cli
+memurai-cli ping
+
+and on port 6379
