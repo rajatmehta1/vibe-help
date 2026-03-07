@@ -8,6 +8,7 @@ celery_app = Celery(
     "forgeline",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
+    include=["app.workers.indexing_tasks"],
 )
 
 celery_app.conf.update(
@@ -23,4 +24,3 @@ celery_app.conf.update(
     task_time_limit=3900,
 )
 
-celery_app.autodiscover_tasks(["app.workers"])

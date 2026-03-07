@@ -13,6 +13,8 @@ from app.db.session import async_session
 
 logger = logging.getLogger("forgeline")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# Suppress Neo4j schema-not-found notifications (expected on empty graph)
+logging.getLogger("neo4j.notifications").setLevel(logging.ERROR)
 
 
 @asynccontextmanager

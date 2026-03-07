@@ -6,6 +6,7 @@ call graphs, patterns, conventions, and AI-generation tracking.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -14,6 +15,17 @@ from neo4j import AsyncDriver, AsyncGraphDatabase
 from app.config import settings
 
 logger = logging.getLogger("forgeline.knowledge")
+
+
+def _flatten_props(data: dict[str, Any]) -> dict[str, Any]:
+    """Serialize any nested dicts/lists to JSON strings for Neo4j compatibility."""
+    result = {}
+    for k, v in data.items():
+        if isinstance(v, (dict, list)):
+            result[k] = json.dumps(v)
+        else:
+            result[k] = v
+    return result
 
 
 class KnowledgeGraphManager:
@@ -205,27 +217,57 @@ class KnowledgeGraphManager:
             )
         logger.debug("Marked function %s as AI-generated (source=%s)", function_id, source)
 
-    async def upsert_pattern(self, pattern_data: dict[str, Any]) -> None:
+    async def upsert_pattern(self, pattern_data: dict[str, Any] | None = None, **kwargs: Any) -> None:
+        if pattern_data is None:
+            pid = kwargs.pop("pattern_id", None)
+            if pid:
+                kwargs["id"] = pid
+            pattern_data = kwargs
         query = """
         MERGE (p:Pattern {id: $pattern_id})
+        ON CREATE SET p.first_detected = datetime()
         SET p += $props,
             p.last_updated = datetime()
-        ON CREATE SET p.first_detected = datetime()
         """
-        props = {k: v for k, v in pattern_data.items() if k != "id"}
+        props = _flatten_props({k: v for k, v in pattern_data.items() if k != "id"})
         async with self._driver.session() as session:
             await session.run(query, pattern_id=pattern_data["id"], props=props)
         logger.debug("Upserted pattern %s", pattern_data.get("name"))
 
-    async def upsert_convention(self, convention_data: dict[str, Any]) -> None:
+    async def upsert_convention(self, convention_data: dict[str, Any] | None = None, **kwargs: Any) -> None:
+        if convention_data is None:
+            cid = kwargs.pop("convention_id", None)
+            if cid:
+                kwargs["id"] = cid
+            convention_data = kwargs
         query = """
         MERGE (c:Convention {id: $conv_id})
         SET c += $props
         """
-        props = {k: v for k, v in convention_data.items() if k != "id"}
+        props = _flatten_props({k: v for k, v in convention_data.items() if k != "id"})
         async with self._driver.session() as session:
             await session.run(query, conv_id=convention_data["id"], props=props)
         logger.debug("Upserted convention %s", convention_data.get("category"))
+
+    async def upsert_layer(
+        self, project_id: str, layer_id: str, name: str, description: str
+    ) -> None:
+        """Create or update a Layer node and link it to the project."""
+        query = """
+        MATCH (p:Project {id: $project_id})
+        MERGE (l:Layer {id: $layer_id})
+        SET l.name = $name, l.description = $description
+        MERGE (p)-[:HAS_LAYER]->(l)
+        """
+        async with self._driver.session() as session:
+            await session.run(
+                query,
+                project_id=project_id,
+                layer_id=layer_id,
+                name=name,
+                description=description,
+            )
+        logger.debug("Upserted layer %s for project %s", name, project_id)
 
     async def set_layer(self, module_id: str, layer_name: str) -> None:
         query = """

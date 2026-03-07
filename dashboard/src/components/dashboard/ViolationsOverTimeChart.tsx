@@ -17,9 +17,7 @@ import {
 
 interface DataPoint {
   date: string;
-  errors: number;
-  warnings: number;
-  info: number;
+  total: number;
 }
 
 interface Props {
@@ -58,35 +56,19 @@ export default function ViolationsOverTimeChart({ data, isLoading }: Props) {
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--border)",
                   borderRadius: "6px",
-                  color: "hsl(var(--foreground))",
+                  color: "var(--foreground)",
                 }}
               />
               <Line
                 type="monotone"
-                dataKey="errors"
-                stroke="hsl(var(--chart-5))"
+                dataKey="total"
+                stroke="var(--chart-2)"
                 strokeWidth={2}
-                dot={false}
-                name="Errors"
-              />
-              <Line
-                type="monotone"
-                dataKey="warnings"
-                stroke="hsl(var(--chart-4))"
-                strokeWidth={2}
-                dot={false}
-                name="Warnings"
-              />
-              <Line
-                type="monotone"
-                dataKey="info"
-                stroke="hsl(var(--chart-1))"
-                strokeWidth={2}
-                dot={false}
-                name="Info"
+                dot={{ r: 3 }}
+                name="Violations"
               />
             </LineChart>
           </ResponsiveContainer>

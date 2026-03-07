@@ -49,15 +49,15 @@ export default function TopPoliciesChart({ data, isLoading }: Props) {
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--border)",
                   borderRadius: "6px",
-                  color: "hsl(var(--foreground))",
+                  color: "var(--foreground)",
                 }}
               />
               <Bar
                 dataKey="violations"
-                fill="hsl(var(--chart-2))"
+                fill="var(--chart-1)"
                 radius={[0, 4, 4, 0]}
               />
             </BarChart>

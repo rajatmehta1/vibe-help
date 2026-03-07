@@ -1,6 +1,7 @@
 import { useProject } from "@/contexts/ProjectContext";
 import ProjectSettingsForm from "@/components/settings/ProjectSettingsForm";
 import IndexingManager from "@/components/settings/IndexingManager";
+import ScanManager from "@/components/settings/ScanManager";
 import NotificationPrefs from "@/components/settings/NotificationPrefs";
 import DangerZone from "@/components/settings/DangerZone";
 import { Settings2 } from "lucide-react";
@@ -29,6 +30,7 @@ export default function Settings() {
         <div className="space-y-6">
           <ProjectSettingsForm />
           <IndexingManager />
+          <ScanManager />
         </div>
         <div className="space-y-6">
           <NotificationPrefs />

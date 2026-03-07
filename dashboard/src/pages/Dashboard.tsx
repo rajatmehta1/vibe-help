@@ -3,6 +3,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { useApi } from "@/hooks/useApi";
 import { projectService } from "@/services/projectService";
 import { policyService } from "@/services/policyService";
+import { scanService } from "@/services/scanService";
 import { categoryLabel, formatRelativeTime } from "@/lib/formatters";
 import StatCard from "@/components/dashboard/StatCard";
 import ViolationsOverTimeChart from "@/components/dashboard/ViolationsOverTimeChart";
@@ -10,6 +11,7 @@ import TopPoliciesChart from "@/components/dashboard/TopPoliciesChart";
 import CategoryDonutChart from "@/components/dashboard/CategoryDonutChart";
 import RecentActivityFeed from "@/components/dashboard/RecentActivityFeed";
 import { Shield, ShieldCheck, AlertTriangle, Clock } from "lucide-react";
+import type { AuditLogResponse } from "@/types";
 
 export default function Dashboard() {
   const { currentProject } = useProject();
@@ -25,7 +27,12 @@ export default function Dashboard() {
     [projectId],
   );
 
-  const isLoading = projectLoading || policiesLoading;
+  const { data: stats, isLoading: statsLoading } = useApi(
+    () => (projectId ? scanService.getStats(projectId) : Promise.resolve(null)),
+    [projectId],
+  );
+
+  const isLoading = projectLoading || policiesLoading || statsLoading;
 
   const activePolicies = useMemo(
     () => policies?.filter((p) => p.is_active).length ?? 0,
@@ -79,8 +86,8 @@ export default function Dashboard() {
         />
         <StatCard
           title="Total Violations"
-          value="--"
-          description="Aggregate data coming soon"
+          value={stats?.total_violations ?? 0}
+          description="Across all completed scans"
           icon={AlertTriangle}
           isLoading={isLoading}
         />
@@ -102,14 +109,17 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ViolationsOverTimeChart data={[]} isLoading={isLoading} />
-        <TopPoliciesChart data={[]} isLoading={isLoading} />
+        <ViolationsOverTimeChart data={stats?.scans_over_time ?? []} isLoading={isLoading} />
+        <TopPoliciesChart data={stats?.top_policies ?? []} isLoading={isLoading} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <CategoryDonutChart data={categoryData} isLoading={isLoading} />
         <div className="lg:col-span-2">
-          <RecentActivityFeed activities={[]} isLoading={isLoading} />
+          <RecentActivityFeed
+            activities={(stats?.recent_activity ?? []) as AuditLogResponse[]}
+            isLoading={isLoading}
+          />
         </div>
       </div>
     </div>

@@ -19,3 +19,9 @@ redis memurai-cli
 memurai-cli ping
 
 and on port 6379
+
+celery -A app.workers.celery_app worker --loglevel=info --pool=solo
+
+taskkill /F /IM celery.exe
+
+pg_ctl -D ^"C^:^\jmd^\harpreet^\software^\data^" -l logfile start

@@ -69,10 +69,13 @@ export default function CodebaseIntelligence() {
     setLearningRunning(true);
     try {
       await knowledgeService.triggerLearning(projectId);
-      toast.success("Convention learning started");
-      refetchPatterns();
-      refetchConventions();
-      refetchArchitecture();
+      toast.success("Convention learning started — results will appear once the background task completes.");
+      // Delay refetch to give the Celery task time to run
+      setTimeout(() => {
+        refetchPatterns();
+        refetchConventions();
+        refetchArchitecture();
+      }, 5000);
     } catch {
       toast.error("Failed to start convention learning");
     } finally {

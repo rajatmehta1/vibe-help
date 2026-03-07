@@ -1,0 +1,11 @@
+
+analyze project
+
+ curl -X POST http://localhost:8000/api/v1/projects/YOUR_PROJECT_ID/analyze \
+    -H "Content-Type: application/json" \
+    so -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNjY2MmQ2OS1iYjk3LTQwODYtYWNhYi1lYjA2N2U1NWJiMjkiLCJleHAiOjE3NzI5MTg2ODB9.ycUYrluCUNGFUxWDOkSngSpW6fOXzJkX79x9OOFvYmE" \
+    -d '{
+      "code": "import os\npassword = \"secret123\"\nos.system(user_input)",
+      "file_path": "example.py",
+      "language": "python"
+    }

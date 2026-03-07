@@ -216,7 +216,7 @@ class PatternDetector:
         for dir_name, layer_name in layer_assignments.items():
             if layer_name not in layers_created:
                 layer_id = f"{project_id}::layer::{layer_name}"
-                await self._graph.set_layer(
+                await self._graph.upsert_layer(
                     project_id=project_id,
                     layer_id=layer_id,
                     name=layer_name,
